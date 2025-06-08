@@ -115,9 +115,8 @@ class CTRAttention(nn.Module):
         return x  # (B, T, J, C)
 
     def _change_shared_attn_device(self, channel_attn, shared_attn):
-        dev = channel_attn.get_device()
-        if dev >= 0:
-            shared_attn = shared_attn.to(dev)
+        dev = channel_attn.device
+        shared_attn = shared_attn.to(dev)
         return shared_attn
 
     def forward_temporal(self, q, k, v, xx):

@@ -77,19 +77,21 @@ class GCN(nn.Module):
 
         node_degrees = adj.detach().sum(dim=-1)
         deg_inv_sqrt = node_degrees ** -0.5
-        norm_deg_matrix = torch.eye(n)
-        dev = adj.get_device()
-        if dev >= 0:
-            norm_deg_matrix = norm_deg_matrix.to(dev)
+        norm_deg_matrix = torch.eye(n, device=adj.device)
         norm_deg_matrix = norm_deg_matrix.view(1, n, n) * deg_inv_sqrt.view(b, n, 1)
         norm_adj = torch.bmm(torch.bmm(norm_deg_matrix, adj), norm_deg_matrix)
 
         return norm_adj
 
-    def change_adj_device_to_cuda(self, adj):
-        dev = self.V.weight.get_device()
-        if dev >= 0 and adj.get_device() < 0:
-            adj = adj.to(dev)
+    # def change_adj_device_to_cuda(self, adj):
+    #     dev = self.V.weight.get_device()
+    #     if dev >= 0 and adj.get_device() < 0:
+    #         adj = adj.to(dev)
+    #     return adj
+    
+    def change_adj_device_to_device(self, adj, device):
+        if adj.device != device:
+            adj = adj.to(device)
         return adj
 
     def forward(self, x):
@@ -106,13 +108,13 @@ class GCN(nn.Module):
                 adj = (similarity >= threshold).float()
             else:
                 adj = self.adj
-                adj = self.change_adj_device_to_cuda(adj)
+                adj = self.change_adj_device_to_device(adj, x.device)
                 adj = adj.repeat(b * j, 1, 1)
 
         else:
             x = x.reshape(-1, j, c)
             adj = self.adj
-            adj = self.change_adj_device_to_cuda(adj)
+            adj = self.change_adj_device_to_device(adj, x.device)
             adj = adj.repeat(b * t, 1, 1)
 
         norm_adj = self.normalize_digraph(adj)

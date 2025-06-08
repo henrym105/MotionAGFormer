@@ -135,8 +135,7 @@ def box_to_center_scale(box, model_image_width, model_image_height):
     return center, scale
 
 
-# Pre-process
-def PreProcess(image, bboxs, cfg, num_pos=2):
+def PreProcess(image, bboxs, cfg, num_pos=2, device=None):
     if type(image) == str:
         data_numpy = cv2.imread(image, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
         # data_numpy = cv2.cvtColor(data_numpy, cv2.COLOR_BGR2RGB)
@@ -163,6 +162,8 @@ def PreProcess(image, bboxs, cfg, num_pos=2):
         transform = transforms.Compose([transforms.ToTensor(),
                                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         input = transform(input).unsqueeze(0)
+        if device is not None:
+            input = input.to(device)
         inputs.append(input)
 
     inputs = torch.cat(inputs)

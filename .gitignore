@@ -3,3 +3,13 @@
 *.pyc
 wandb
 checkpoint/*.pth.tr
+
+**.pth*
+**yolo*.weights
+**.npz
+**.png
+
+**.DS_Store
+
+demo/output/**
+demo/video/**

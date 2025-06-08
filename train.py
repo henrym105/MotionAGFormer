@@ -255,7 +255,7 @@ def train(args, opts):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = load_model(args)
-    if torch.cuda.is_available():
+    if device.type == 'cuda':
         model = torch.nn.DataParallel(model)
     model.to(device)
 

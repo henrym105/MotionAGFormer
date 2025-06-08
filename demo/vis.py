@@ -10,6 +10,7 @@ import torch.nn as nn
 import glob
 from tqdm import tqdm
 import copy
+from pprint import pprint
 
 sys.path.append(os.getcwd())
 from demo.lib.utils import normalize_screen_coordinates, camera_to_world
@@ -23,6 +24,92 @@ import matplotlib.gridspec as gridspec
 plt.switch_backend('agg')
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+
+
+import json
+import os
+import random
+import pickle
+
+import numpy as np
+import torch
+import yaml
+from easydict import EasyDict as edict
+from typing import Any, IO
+
+
+def print_args(args):
+    print("[INFO] Input arguments:")
+    for key, val in args.items():
+        print(f"[INFO]   {key}: {val}")
+        
+
+def set_random_seed(seed):
+    """Sets random seed for training reproducibility"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
+class Loader(yaml.SafeLoader):
+    """YAML Loader with `!include` constructor."""
+
+    def __init__(self, stream: IO) -> None:
+        """Initialise Loader."""
+
+        try:
+            self._root = os.path.split(stream.name)[0]
+        except AttributeError:
+            self._root = os.path.curdir
+
+        super().__init__(stream)
+
+
+def construct_include(loader: Loader, node: yaml.Node) -> Any:
+    """Include file referenced at node."""
+
+    filename = os.path.abspath(os.path.join(loader._root, loader.construct_scalar(node)))
+    extension = os.path.splitext(filename)[1].lstrip('.')
+
+    with open(filename, 'r') as f:
+        if extension in ('yaml', 'yml'):
+            return yaml.load(f, Loader)
+        elif extension in ('json',):
+            return json.load(f)
+        else:
+            return ''.join(f.readlines())
+
+
+def get_config(config_path):
+    yaml.add_constructor('!include', construct_include, Loader)
+    with open(config_path, 'r') as stream:
+        config = yaml.load(stream, Loader=Loader)
+    config = edict(config)
+    _, config_filename = os.path.split(config_path)
+    config_name, _ = os.path.splitext(config_filename)
+    config.name = config_name
+    return config
+
+
+def count_param_numbers(model):
+    model_params = 0
+    for parameter in model.parameters():
+        model_params = model_params + parameter.numel()
+    return model_params
+
+
+def create_directory_if_not_exists(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def read_pkl(data_url):
+    file = open(data_url,'rb')
+    content = pickle.load(file)
+    file.close()
+    return content
+
+
 
 def show2Dpose(kps, img):
     connections = [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5],
@@ -81,17 +168,22 @@ def show3Dpose(vals, ax):
     ax.tick_params('z', labelleft = False)
 
 
-def get_pose2D(video_path, output_dir):
+# def get_pose2D(video_path, output_dir):
+def get_pose2D(video_path, output_dir, device):
     cap = cv2.VideoCapture(video_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
     print('\nGenerating 2D pose...')
-    keypoints, scores = hrnet_pose(video_path, det_dim=416, num_peroson=1, gen_output=True)
+    # keypoints, scores = hrnet_pose(video_path, det_dim=416, num_peroson=1, gen_output=True)
+    keypoints, scores = hrnet_pose(video_path, det_dim=416, num_peroson=1, gen_output=True, device=device)
+
     keypoints, scores, valid_frames = h36m_coco_format(keypoints, scores)
-    
     # Add conf score to the last dim
     keypoints = np.concatenate((keypoints, scores[..., None]), axis=-1)
+
+    # # If you ever use torch tensors here, move them to device
+    # keypoints = torch.from_numpy(keypoints).to(device)
 
     output_dir += 'input_2D/'
     os.makedirs(output_dir, exist_ok=True)
@@ -185,26 +277,53 @@ def flip_data(data, left_joints=[1, 2, 3, 14, 15, 16], right_joints=[4, 5, 6, 11
     return flipped_data
 
 @torch.no_grad()
-def get_pose3D(video_path, output_dir):
-    args, _ = argparse.ArgumentParser().parse_known_args()
-    args.n_layers, args.dim_in, args.dim_feat, args.dim_rep, args.dim_out = 16, 3, 128, 512, 3
-    args.mlp_ratio, args.act_layer = 4, nn.GELU
-    args.attn_drop, args.drop, args.drop_path = 0.0, 0.0, 0.0
-    args.use_layer_scale, args.layer_scale_init_value, args.use_adaptive_fusion = True, 0.00001, True
-    args.num_heads, args.qkv_bias, args.qkv_scale = 8, False, None
-    args.hierarchical = False
-    args.use_temporal_similarity, args.neighbour_num, args.temporal_connection_len = True, 2, 1
-    args.use_tcn, args.graph_only = False, False
-    args.n_frames = 243
-    args = vars(args)
+def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
+    """
+    Args:
+        video_path: path to video
+        output_dir: output directory
+        device: torch device
+        model_size: model size string (e.g. 'b', 's', etc.)
+        yaml_path: path to yaml config file
+    """
+    if yaml_path is not None:
+        args=get_config(yaml_path)
+        args = {k: v for k, v in args.items() if k in [
+            'n_layers', 'dim_in', 'dim_feat', 'dim_rep', 'dim_out',
+            'mlp_ratio', 'act_layer',
+            'attn_drop', 'drop', 'drop_path',
+            'use_layer_scale', 'layer_scale_init_value', 'use_adaptive_fusion',
+            'num_heads', 'qkv_bias', 'qkv_scale',
+            'hierarchical',
+            'use_temporal_similarity', 'neighbour_num', 'temporal_connection_len',
+            'use_tcn', 'graph_only',
+            'n_frames'
+        ]}
+        args['act_layer'] = nn.GELU
+    else:
+        args, _ = argparse.ArgumentParser().parse_known_args()
+        args.n_layers, args.dim_in, args.dim_feat, args.dim_rep, args.dim_out = 16, 3, 128, 512, 3
+        args.mlp_ratio, args.act_layer = 4, nn.GELU
+        args.attn_drop, args.drop, args.drop_path = 0.0, 0.0, 0.0
+        args.use_layer_scale, args.layer_scale_init_value, args.use_adaptive_fusion = True, 0.00001, True
+        args.num_heads, args.qkv_bias, args.qkv_scale = 8, False, None
+        args.hierarchical = False
+        args.use_temporal_similarity, args.neighbour_num, args.temporal_connection_len = True, 2, 1
+        args.use_tcn, args.graph_only = False, False
+        args.n_frames = 243
+        args = vars(args)
 
+    # pprint(args)
     ## Reload 
-    model = nn.DataParallel(MotionAGFormer(**args)).cuda()
+    model = nn.DataParallel(MotionAGFormer(**args)).to(device)
+    print(type(model))
+    # print(model.__dict__)
 
     # Put the pretrained model of MotionAGFormer in 'checkpoint/'
-    model_path = sorted(glob.glob(os.path.join('checkpoint', 'motionagformer-b-h36m.pth.tr')))[0]
+    model_path = sorted(glob.glob(os.path.join('demo', 'lib', 'checkpoint', f'motionagformer-{model_size}*.pth.tr')))[0]
+    print(f"{model_path = }")
 
-    pre_dict = torch.load(model_path)
+    pre_dict = torch.load(model_path, map_location=device)
     model.load_state_dict(pre_dict['model'], strict=True)
 
     model.eval()
@@ -215,10 +334,8 @@ def get_pose3D(video_path, output_dir):
     # keypoints = keypoints[:240]
     # keypoints = keypoints[None, ...]
     # keypoints = turn_into_h36m(keypoints)
-    
 
     clips, downsample = turn_into_clips(keypoints)
-
 
     cap = cv2.VideoCapture(video_path)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -239,14 +356,13 @@ def get_pose3D(video_path, output_dir):
         os.makedirs(output_dir_2D, exist_ok=True)
         cv2.imwrite(output_dir_2D + str(('%04d'% i)) + '_2D.png', image)
 
-    
     print('\nGenerating 3D pose...')
     for idx, clip in enumerate(clips):
         input_2D = normalize_screen_coordinates(clip, w=img_size[1], h=img_size[0]) 
         input_2D_aug = flip_data(input_2D)
-        
-        input_2D = torch.from_numpy(input_2D.astype('float32')).cuda()
-        input_2D_aug = torch.from_numpy(input_2D_aug.astype('float32')).cuda()
+
+        input_2D = torch.from_numpy(input_2D.astype('float32')).to(device)
+        input_2D_aug = torch.from_numpy(input_2D_aug.astype('float32')).to(device)
 
         output_3D_non_flip = model(input_2D) 
         output_3D_flip = flip_data(model(input_2D_aug))
@@ -257,7 +373,7 @@ def get_pose3D(video_path, output_dir):
 
         output_3D[:, :, 0, :] = 0
         post_out_all = output_3D[0].cpu().detach().numpy()
-        
+
         for j, post_out in enumerate(post_out_all):
             rot =  [0.1407056450843811, -0.1500701755285263, -0.755240797996521, 0.6223280429840088]
             rot = np.array(rot, dtype='float32')
@@ -277,9 +393,7 @@ def get_pose3D(video_path, output_dir):
             str(('%04d'% (idx * 243 + j)))
             plt.savefig(output_dir_3D + str(('%04d'% (idx * 243 + j))) + '_3D.png', dpi=200, format='png', bbox_inches='tight')
             plt.close(fig)
-        
 
-        
     print('Generating 3D pose successful!')
 
     ## all
@@ -317,11 +431,34 @@ def get_pose3D(video_path, output_dir):
         plt.savefig(output_dir_pose + str(('%04d'% i)) + '_pose.png', dpi=200, bbox_inches = 'tight')
         plt.close(fig)
 
+
+def get_pytorch_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
+    
+
 if __name__ == "__main__":
+    # Choose model size and config file to use:
+    # 'xs', 's', 'b', 'l'
+
+    # MODEL_SIZE = 'xs'
+    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-xsmall.yaml"
+    # MODEL_SIZE = 's'
+    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-small.yaml"
+    MODEL_SIZE = 'b'
+    MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-base.yaml"
+    # MODEL_SIZE = 'l'
+    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-large.yaml"
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--video', type=str, default='sample_video.mp4', help='input video')
     parser.add_argument('--gpu', type=str, default='0', help='input video')
     args = parser.parse_args()
+
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
@@ -329,8 +466,11 @@ if __name__ == "__main__":
     video_name = video_path.split('/')[-1].split('.')[0]
     output_dir = './demo/output/' + video_name + '/'
 
-    get_pose2D(video_path, output_dir)
-    get_pose3D(video_path, output_dir)
+    device = get_pytorch_device()
+    print(f"Using device: {device}")
+    
+    get_pose2D(video_path, output_dir, device)
+    get_pose3D(video_path, output_dir, device, MODEL_SIZE, MODEL_CONFIG_PATH)
     img2video(video_path, output_dir)
     print('Generating demo successful!')
 

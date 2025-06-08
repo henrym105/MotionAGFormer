@@ -128,7 +128,7 @@ class CTRGCBlock(nn.Module):
         if self.adaptive:
             A = self.PA
         else:
-            A = self.A.cuda(x.get_device())
+            A = self.A.to(x.device)
         for i in range(self.num_subset):
             z = self.convs[i](x, A[i], self.alpha)
             y = z + y if y is not None else z

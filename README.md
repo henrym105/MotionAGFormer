@@ -117,3 +117,11 @@ If you find our work useful for your project, please consider citing the paper:
   year      =   {2024}
 }
 ```
+
+
+
+setup:
+```
+chmod +x ./setup.sh
+chmod +x scripts/**
+```

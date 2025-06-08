@@ -65,26 +65,22 @@ def reset_config(args):
 
 
 # load model
-def model_load(config):
+def model_load(config, device):
     model = pose_hrnet.get_pose_net(config, is_train=False)
-    if torch.cuda.is_available():
-        model = model.cuda()
+    model = model.to(device)
 
-    state_dict = torch.load(config.OUTPUT_DIR)
+    state_dict = torch.load(config.OUTPUT_DIR, map_location=device, weights_only=True)
     from collections import OrderedDict
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
         name = k  # remove module.
-        #  print(name,'\t')
         new_state_dict[name] = v
     model.load_state_dict(new_state_dict)
     model.eval()
-    # print('HRNet network successfully loaded')
-    
     return model
 
 
-def gen_video_kpts(video, det_dim=416, num_peroson=1, gen_output=False):
+def gen_video_kpts(video, det_dim=416, num_peroson=1, gen_output=False, device=None):
     # Updating configuration
     args = parse_args()
     reset_config(args)
@@ -93,7 +89,7 @@ def gen_video_kpts(video, det_dim=416, num_peroson=1, gen_output=False):
 
     # Loading detector and pose model, initialize sort for track
     human_model = yolo_model(inp_dim=det_dim)
-    pose_model = model_load(cfg)
+    pose_model = model_load(cfg, device)
     people_sort = Sort(min_hits=0)
 
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -135,12 +131,8 @@ def gen_video_kpts(video, det_dim=416, num_peroson=1, gen_output=False):
 
         with torch.no_grad():
             # bbox is coordinate location
-            inputs, origin_img, center, scale = PreProcess(frame, track_bboxs, cfg, num_peroson)
-
+            inputs, origin_img, center, scale = PreProcess(frame, track_bboxs, cfg, num_peroson, device=device)
             inputs = inputs[:, [2, 1, 0]]
-
-            if torch.cuda.is_available():
-                inputs = inputs.cuda()
             output = pose_model(inputs)
 
             # compute coordinate

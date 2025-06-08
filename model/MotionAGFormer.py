@@ -287,12 +287,14 @@ class MotionAGFormer(nn.Module):
 def _test():
     from torchprofile import profile_macs
     import warnings
+    from run_infra import get_pytorch_device    
     warnings.filterwarnings('ignore')
     b, c, t, j = 1, 3, 27, 17
-    random_x = torch.randn((b, t, j, c)).to('cuda')
+    device = get_pytorch_device()  # You may need to import this from the appropriate module
+    random_x = torch.randn((b, t, j, c)).to(device)
 
     model = MotionAGFormer(n_layers=12, dim_in=3, dim_feat=64, mlp_ratio=4, hierarchical=False,
-                           use_tcn=False, graph_only=False, n_frames=t).to('cuda')
+        use_tcn=False, graph_only=False, n_frames=t).to(device)
     model.eval()
 
     model_params = 0
