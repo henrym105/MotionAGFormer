@@ -219,29 +219,36 @@ def showimage(ax, img):
 
 
 def resample(n_frames):
-    even = np.linspace(0, n_frames, num=243, endpoint=False)
-    result = np.floor(even)
-    result = np.clip(result, a_min=0, a_max=n_frames - 1).astype(np.uint32)
-    return result
+    def _resample(n_frames, target_frames):
+        even = np.linspace(0, n_frames, num=target_frames, endpoint=False)
+        result = np.floor(even)
+        result = np.clip(result, a_min=0, a_max=n_frames - 1).astype(np.uint32)
+        return result
+    return _resample
 
 
-def turn_into_clips(keypoints):
+def turn_into_clips(keypoints, target_frames):
     clips = []
     n_frames = keypoints.shape[1]
-    if n_frames <= 243:
-        new_indices = resample(n_frames)
+    resample_fn = resample(n_frames)
+    downsample = None
+    if n_frames <= target_frames:
+        new_indices = resample_fn(target_frames)
         clips.append(keypoints[:, new_indices, ...])
         downsample = np.unique(new_indices, return_index=True)[1]
     else:
-        for start_idx in range(0, n_frames, 243):
-            keypoints_clip = keypoints[:, start_idx:start_idx + 243, ...]
+        for start_idx in range(0, n_frames, target_frames):
+            keypoints_clip = keypoints[:, start_idx:start_idx + target_frames, ...]
             clip_length = keypoints_clip.shape[1]
-            if clip_length != 243:
-                new_indices = resample(clip_length)
+            if clip_length != target_frames:
+                new_indices = resample_fn(target_frames)
                 clips.append(keypoints_clip[:, new_indices, ...])
                 downsample = np.unique(new_indices, return_index=True)[1]
             else:
                 clips.append(keypoints_clip)
+        if downsample is None:
+            # If all clips are full length, set downsample to default (all indices)
+            downsample = np.arange(target_frames)
     return clips, downsample
 
 def turn_into_h36m(keypoints):
@@ -335,7 +342,7 @@ def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
     # keypoints = keypoints[None, ...]
     # keypoints = turn_into_h36m(keypoints)
 
-    clips, downsample = turn_into_clips(keypoints)
+    clips, downsample = turn_into_clips(keypoints, args['n_frames'])
 
     cap = cv2.VideoCapture(video_path)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -357,6 +364,7 @@ def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
         cv2.imwrite(output_dir_2D + str(('%04d'% i)) + '_2D.png', image)
 
     print('\nGenerating 3D pose...')
+
     for idx, clip in enumerate(clips):
         input_2D = normalize_screen_coordinates(clip, w=img_size[1], h=img_size[0]) 
         input_2D_aug = flip_data(input_2D)
@@ -390,8 +398,8 @@ def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
 
             output_dir_3D = output_dir +'pose3D/'
             os.makedirs(output_dir_3D, exist_ok=True)
-            str(('%04d'% (idx * 243 + j)))
-            plt.savefig(output_dir_3D + str(('%04d'% (idx * 243 + j))) + '_3D.png', dpi=200, format='png', bbox_inches='tight')
+            str(('%04d'% (idx * args['n_frames'] + j)))
+            plt.savefig(output_dir_3D + str(('%04d'% (idx * args['n_frames'] + j))) + '_3D.png', dpi=200, format='png', bbox_inches='tight')
             plt.close(fig)
 
     print('Generating 3D pose successful!')
@@ -445,12 +453,12 @@ if __name__ == "__main__":
     # Choose model size and config file to use:
     # 'xs', 's', 'b', 'l'
 
-    # MODEL_SIZE = 'xs'
-    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-xsmall.yaml"
+    MODEL_SIZE = 'xs'
+    MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-xsmall.yaml"
     # MODEL_SIZE = 's'
     # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-small.yaml"
-    MODEL_SIZE = 'b'
-    MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-base.yaml"
+    # MODEL_SIZE = 'b'
+    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-base.yaml"
     # MODEL_SIZE = 'l'
     # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-large.yaml"
 
