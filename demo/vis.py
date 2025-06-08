@@ -218,22 +218,20 @@ def showimage(ax, img):
     ax.imshow(img)
 
 
-def resample(n_frames):
-    def _resample(n_frames, target_frames):
-        even = np.linspace(0, n_frames, num=target_frames, endpoint=False)
-        result = np.floor(even)
-        result = np.clip(result, a_min=0, a_max=n_frames - 1).astype(np.uint32)
-        return result
-    return _resample
+def resample(n_frames, target_frames):
+    even = np.linspace(0, n_frames, num=target_frames, endpoint=False)
+    result = np.floor(even)
+    result = np.clip(result, a_min=0, a_max=n_frames - 1).astype(np.uint32)
+    return result
+
 
 
 def turn_into_clips(keypoints, target_frames):
     clips = []
     n_frames = keypoints.shape[1]
-    resample_fn = resample(n_frames)
     downsample = None
     if n_frames <= target_frames:
-        new_indices = resample_fn(target_frames)
+        new_indices = resample(n_frames, target_frames)
         clips.append(keypoints[:, new_indices, ...])
         downsample = np.unique(new_indices, return_index=True)[1]
     else:
@@ -241,7 +239,7 @@ def turn_into_clips(keypoints, target_frames):
             keypoints_clip = keypoints[:, start_idx:start_idx + target_frames, ...]
             clip_length = keypoints_clip.shape[1]
             if clip_length != target_frames:
-                new_indices = resample_fn(target_frames)
+                new_indices = resample(clip_length, target_frames)
                 clips.append(keypoints_clip[:, new_indices, ...])
                 downsample = np.unique(new_indices, return_index=True)[1]
             else:
@@ -320,11 +318,12 @@ def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
         args.n_frames = 243
         args = vars(args)
 
-    # pprint(args)
+    print("\n[INFO] Using MotionAGFormer with the following configuration:")
+    pprint(args)
+
     ## Reload 
     model = nn.DataParallel(MotionAGFormer(**args)).to(device)
-    print(type(model))
-    # print(model.__dict__)
+    print(f"{type(model) = }")
 
     # Put the pretrained model of MotionAGFormer in 'checkpoint/'
     model_path = sorted(glob.glob(os.path.join('demo', 'lib', 'checkpoint', f'motionagformer-{model_size}*.pth.tr')))[0]
@@ -364,8 +363,7 @@ def get_pose3D(video_path, output_dir, device, model_size='*', yaml_path=None):
         cv2.imwrite(output_dir_2D + str(('%04d'% i)) + '_2D.png', image)
 
     print('\nGenerating 3D pose...')
-
-    for idx, clip in enumerate(clips):
+    for idx, clip in tqdm(enumerate(clips)):
         input_2D = normalize_screen_coordinates(clip, w=img_size[1], h=img_size[0]) 
         input_2D_aug = flip_data(input_2D)
 

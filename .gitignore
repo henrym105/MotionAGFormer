@@ -13,3 +13,12 @@ checkpoint/*.pth.tr
 
 demo/output/**
 demo/video/**
+
+
+**.venv
+**.env
+**.vscode
+**.mypy_cache
+**.pytest_cache
+**.coverage
+**.ipynb_checkpoints
