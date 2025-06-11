@@ -1,1 +1,1 @@
-python3 demo/vis.py --video sample_video.mp4
+uv run demo/vis.py --video sample_video.mp4

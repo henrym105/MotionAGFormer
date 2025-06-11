@@ -451,12 +451,12 @@ if __name__ == "__main__":
     # Choose model size and config file to use:
     # 'xs', 's', 'b', 'l'
 
-    MODEL_SIZE = 'xs'
-    MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-xsmall.yaml"
+    # MODEL_SIZE = 'xs'
+    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-xsmall.yaml"
     # MODEL_SIZE = 's'
     # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-small.yaml"
-    # MODEL_SIZE = 'b'
-    # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-base.yaml"
+    MODEL_SIZE = 'b'
+    MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-base.yaml"
     # MODEL_SIZE = 'l'
     # MODEL_CONFIG_PATH = "./configs/h36m/MotionAGFormer-large.yaml"
 
