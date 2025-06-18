@@ -249,13 +249,19 @@ def train(args, opts):
     train_loader = DataLoader(train_dataset, shuffle=True, **common_loader_params)
     test_loader = DataLoader(test_dataset, shuffle=False, **common_loader_params)
 
-    datareader = DataReaderH36M(n_frames=args.n_frames, sample_stride=1,
-                                data_stride_train=args.n_frames // 3, data_stride_test=args.n_frames,
-                                dt_root='data/motion3d', dt_file=args.dt_file)  # Used for H36m evaluation
+    datareader = DataReaderH36M(
+        n_frames=args.n_frames, 
+        sample_stride=1,
+        data_stride_train=args.n_frames // 3, 
+        data_stride_test=args.n_frames,
+        # dt_root='data/pose_3d', 
+        dt_root='data/motion_3d',
+        dt_file=args.dt_file,
+    )  # Used for H36m evaluation
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = 'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu'
     model = load_model(args)
-    if device.type == 'cuda':
+    if device == 'cuda' or device == 'mps':
         model = torch.nn.DataParallel(model)
     model.to(device)
 

@@ -4,6 +4,7 @@
 wandb
 checkpoint/*.pth.tr
 
+**.pkl
 **.pth*
 **yolo*.weights
 **.npz

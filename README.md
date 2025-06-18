@@ -13,9 +13,14 @@ The project is developed under the following environment:
 - CUDA 12.2
 
 For installation of the project dependencies, please run:
-```
-pip install -r requirements.txt
+```sh
+chmod +x ./setup.sh
+chmod +x scripts/**
+./setup.sh
 ``` 
+This will install the required packages in `.venv/` and download the pretrained model weights for the demo.
+
+
 ## Dataset
 ### Human3.6M
 #### Preprocessing
@@ -116,12 +121,4 @@ If you find our work useful for your project, please consider citing the paper:
   booktitle =   {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
   year      =   {2024}
 }
-```
-
-
-
-setup:
-```
-chmod +x ./setup.sh
-chmod +x scripts/**
 ```

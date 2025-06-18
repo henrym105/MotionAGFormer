@@ -27,6 +27,10 @@ mv 'motionagformer-xs-h36m.pth.tr' './demo/lib/checkpoint/motionagformer-xs-h36m
 gdown https://drive.google.com/uc?id=1WI8QSsD84wlXIdK1dLp6hPZq4FPozmVZ
 mv 'motionagformer-l-h36m.pth.tr' './demo/lib/checkpoint/motionagformer-l-h36m.pth.tr'
 
+gdown https://drive.google.com/uc?id=1DrF7WZdDvRPsH12gQm5DPXbviZ4waYFf
+mv 'motionagformer-s-h36m.pth.tr' './demo/lib/checkpoint/motionagformer-s-h36m.pth.tr'
+
+
 # -------------------------------------------------------
 # Model weights trained on h36m + AthletePose3 dataset:
 # -------------------------------------------------------
