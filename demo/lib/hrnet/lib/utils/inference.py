@@ -13,8 +13,9 @@ import sys
 import os.path as osp
 import numpy as np
 
-sys.path.insert(0, osp.join(osp.dirname(osp.realpath(__file__)), '..'))
-from utils.transforms import transform_preds
+# sys.path.insert(0, osp.join(osp.dirname(osp.realpath(__file__)), '..'))
+# from utils.transforms import transform_preds
+from .transforms import transform_preds
 sys.path.pop(0)
 
 

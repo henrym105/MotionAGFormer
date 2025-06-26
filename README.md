@@ -93,7 +93,7 @@ Similarly, MPI-INF-3DHP can be evaluated as follows:
 python train_3dhp.py --eval-only --checkpoint <CHECKPOINT-DIRECTORY> --checkpoint-file <CHECKPOINT-FILE-NAME> --config <PATH-TO-CONFIG>
 ```
 ## Demo
-Our demo is a modified version of the one provided by [MHFormer](https://github.com/Vegetebird/MHFormer) repository. First, you need to download YOLOv3 and HRNet pretrained models [here](https://drive.google.com/drive/folders/1_ENAMOsPM7FXmdYRbkwbFHgzQq_B_NQA?usp=sharing) and put it in the './demo/lib/checkpoint' directory. Next, download our base model checkpoint from [here](https://drive.google.com/file/d/1Iii5EwsFFm9_9lKBUPfN8bV5LmfkNUMP/view) and put it in the './checkpoint' directory. Then, you need to put your in-the-wild videos in the './demo/video' directory.
+Our demo is a modified version of the one provided by [MHFormer](https://github.com/Vegetebird/MHFormer) repository. First, you need to download YOLOv3 and HRNet pretrained models [here](https://drive.google.com/drive/folders/1_ENAMOsPM7FXmdYRbkwbFHgzQq_B_NQA?usp=sharing) and put it in the './demo/lib/checkpoint' directory. Next, download our base model checkpoint from [here](https://drive.google.com/file/d/1Iii5EwsFFm9_9lKBUPfN8bV5LmfkNUMP/view) and put it in the `./demo/lib/checkpoint` directory. Then, you need to put your in-the-wild videos in the `./demo/video` directory.
 
 Run the command below:
 ```
@@ -102,6 +102,29 @@ python demo/vis.py --video sample_video.mp4
 Sample demo output:
 
 <p align="center"><img src="figure/sample_video.gif" width="60%" alt="" /></p>
+
+
+## Streamlit Demo Dashboard
+
+You can also run an interactive demo locally using Streamlit to visualize 2D and 3D pose estimation results on your own or sample videos.
+
+### Usage
+
+1. **Download demo model weights** as described in the [Environment](#Environment) section above.
+2. **Prepare your video** by placing it in the `./demo/video` directory, or use a provided sample video.
+
+3. **Start the Streamlit app**:
+  ```sh
+  uv run streamlit run app.py
+  ```
+
+4. **Open your browser** and follow the instructions on the dashboard:
+  - Upload a video file (`.mp4` or `.mov`) or select a sample video.
+  - Choose the model size.
+  - Click "Run Pose Estimation" to process the video.
+  - View the 2D keypoints and output video with 2D/3D pose overlays.
+
+<p align="center"><img src="figure/streamlit_demo.png" width="80%" alt="Streamlit Demo Screenshot" /></p>
 
 ## Acknowledgement
 Our code refers to the following repositories:

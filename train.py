@@ -254,9 +254,9 @@ def train(args, opts):
         sample_stride=1,
         data_stride_train=args.n_frames // 3, 
         data_stride_test=args.n_frames,
-        # dt_root='data/pose_3d', 
-        dt_root='data/motion_3d',
-        dt_file=args.dt_file,
+        dt_root='data/pose_3d/frame-5',
+        # dt_root='data/motion3d',
+        # dt_file=args.dt_file,
     )  # Used for H36m evaluation
 
     device = 'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu'

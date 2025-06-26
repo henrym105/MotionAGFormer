@@ -193,6 +193,7 @@ def get_pose2D(video_path, output_dir, device):
 
 
 def img2video(video_path, output_dir):
+    video_name = video_path.split('/')[-1].split('.')[0]
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS)) + 5
 
